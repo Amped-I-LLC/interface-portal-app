@@ -1,0 +1,338 @@
+/* ============================================================
+   AMPED I — Design System
+   All brand colors, typography, and spacing live here.
+   To customize for a new project, update the values in :root.
+   ============================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* --- Brand Colors --- */
+  --color-primary:        #3b6ef6;   /* bright blue — buttons, active states, accents */
+  --color-primary-hover:  #2d5ee0;   /* darker blue on hover */
+  --color-primary-light:  #e8effe;   /* very light blue — input focus rings, highlights */
+
+  /* --- Sidebar --- */
+  --color-sidebar-bg:     #1e2d4d;   /* dark navy */
+  --color-sidebar-text:   #a8bbd4;   /* muted blue-white for inactive nav items */
+  --color-sidebar-active: #3b6ef6;   /* active nav item background */
+  --color-sidebar-active-text: #ffffff;
+  --color-sidebar-label:  #5a7a9a;   /* section label color e.g. "SETUP", "OUTPUT" */
+  --color-sidebar-hover:  #263553;   /* hover state on nav items */
+  --color-sidebar-border: #263553;   /* subtle dividers inside sidebar */
+
+  /* --- Main Content Area --- */
+  --color-bg-page:        #f0f4ff;   /* light blue-gray page background */
+  --color-bg-card:        #ffffff;   /* card / panel background */
+  --color-bg-input:       #f5f8ff;   /* input field background */
+
+  /* --- Text --- */
+  --color-text-primary:   #1e2d4d;   /* headings, strong text */
+  --color-text-secondary: #4a5568;   /* body text */
+  --color-text-muted:     #8a9ab0;   /* hints, placeholders, captions */
+
+  /* --- Borders --- */
+  --color-border:         #e2e8f0;   /* default border */
+  --color-border-focus:   #3b6ef6;   /* input focus border */
+
+  /* --- Status Colors --- */
+  --color-success:        #10b981;
+  --color-success-light:  #d1fae5;
+  --color-warning:        #f59e0b;
+  --color-warning-light:  #fef3c7;
+  --color-danger:         #ef4444;
+  --color-danger-light:   #fee2e2;
+  --color-info:           #3b82f6;
+  --color-info-light:     #dbeafe;
+
+  /* --- Layout --- */
+  --sidebar-width:        240px;
+  --topbar-height:        56px;
+
+  /* --- Typography --- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* --- Spacing scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- Border radius --- */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.10);
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+h1 { font-size: 22px; font-weight: 600; color: var(--color-text-primary); }
+h2 { font-size: 18px; font-weight: 600; color: var(--color-text-primary); }
+h3 { font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+h4 { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+
+p  { line-height: 1.6; color: var(--color-text-secondary); }
+
+.text-muted    { color: var(--color-text-muted); }
+.text-primary  { color: var(--color-text-primary); }
+.text-brand    { color: var(--color-primary); }
+.text-sm       { font-size: 12px; }
+.text-xs       { font-size: 11px; }
+
+/* ============================================================
+   SECTION LABELS (like "SETUP", "OUTPUT" in sidebar)
+   ============================================================ */
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-sidebar-label);
+  padding: 16px 16px 6px;
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--color-primary-hover); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+.btn-secondary:hover { background: var(--color-bg-input); }
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+.btn-danger:hover { opacity: 0.9; }
+
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-lg { padding: 10px 20px; font-size: 15px; }
+
+/* ============================================================
+   FORM INPUTS
+   ============================================================ */
+
+.input, .select, .textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--color-border-focus);
+  background: #fff;
+}
+
+.input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-group { margin-bottom: var(--space-5); }
+
+/* ============================================================
+   BADGES / STATUS PILLS
+   ============================================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+}
+
+.badge-success  { background: var(--color-success-light); color: #065f46; }
+.badge-warning  { background: var(--color-warning-light); color: #92400e; }
+.badge-danger   { background: var(--color-danger-light);  color: #991b1b; }
+.badge-info     { background: var(--color-info-light);    color: #1e40af; }
+.badge-neutral  { background: #f1f5f9; color: #475569; }
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  background: #f8faff;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #f8faff; }
+
+/* ============================================================
+   PAGE LAYOUT HELPERS
+   ============================================================ */
+
+.page-header {
+  margin-bottom: var(--space-6);
+}
+
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.page-header p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+
+@media (max-width: 768px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   LOADING / SKELETON STATES
+   ============================================================ */
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f4ff 25%, #e2eaff 50%, #f0f4ff 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================================
+   DIVIDERS
+   ============================================================ */
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-6) 0;
+}
