@@ -33,7 +33,32 @@ export default function AdminAppsPage() {
   const [form,      setForm]      = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [saving,    setSaving]    = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
   const supabase = createClient()
+
+  const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp']
+  const MAX_MB = 2
+
+  async function uploadLogo(file) {
+    setUploadError(null)
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setUploadError('Only PNG, JPG, SVG, and WebP files are allowed.')
+      return
+    }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setUploadError(`File must be under ${MAX_MB}MB.`)
+      return
+    }
+    setUploading(true)
+    const ext  = file.name.split('.').pop()
+    const path = `${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('app-logos').upload(path, file, { upsert: true })
+    if (error) { setUploadError('Upload failed: ' + error.message); setUploading(false); return }
+    const { data } = supabase.storage.from('app-logos').getPublicUrl(path)
+    setForm(f => ({ ...f, logo_url: data.publicUrl }))
+    setUploading(false)
+  }
 
   useEffect(() => {
     if (!guardLoading) fetchApps()
@@ -73,6 +98,7 @@ export default function AdminAppsPage() {
     setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setUploadError(null)
   }
 
   async function saveApp() {
@@ -164,24 +190,56 @@ export default function AdminAppsPage() {
 
             <div className="form-group" style={{ marginBottom: 16 }}>
               <label className="input-label">
-                Logo URL <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional — paste public URL from Supabase Storage)</span>
+                Logo <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional — PNG, JPG, SVG, or WebP · max 2MB)</span>
               </label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  className="input"
-                  value={form.logo_url}
-                  onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
-                  placeholder="https://..."
-                  style={{ flex: 1 }}
-                />
-                {form.logo_url && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Preview */}
+                {form.logo_url ? (
                   <img
                     src={form.logo_url}
-                    alt="preview"
-                    style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', objectFit: 'contain', border: '1px solid var(--color-border)', flexShrink: 0 }}
+                    alt="logo preview"
+                    style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', objectFit: 'contain', border: '1px solid var(--color-border)', flexShrink: 0 }}
                     onError={e => { e.currentTarget.style.display = 'none' }}
                   />
+                ) : (
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 'var(--radius-md)',
+                    border: '1px dashed var(--color-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, color: 'var(--color-text-muted)', flexShrink: 0,
+                  }}>+</div>
                 )}
+                <div style={{ flex: 1 }}>
+                  <label style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-bg-card)',
+                    fontSize: 13, color: 'var(--color-text-secondary)',
+                    cursor: uploading ? 'not-allowed' : 'pointer',
+                    opacity: uploading ? 0.6 : 1,
+                  }}>
+                    {uploading ? 'Uploading…' : 'Choose file'}
+                    <input
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.svg,.webp"
+                      style={{ display: 'none' }}
+                      disabled={uploading}
+                      onChange={e => { if (e.target.files?.[0]) uploadLogo(e.target.files[0]) }}
+                    />
+                  </label>
+                  {form.logo_url && !uploading && (
+                    <button
+                      onClick={() => setForm(f => ({ ...f, logo_url: '' }))}
+                      style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                  {uploadError && (
+                    <p style={{ fontSize: 12, color: 'var(--color-danger)', marginTop: 4 }}>{uploadError}</p>
+                  )}
+                </div>
               </div>
             </div>
 
