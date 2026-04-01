@@ -33,8 +33,11 @@ export default function AdminAppsPage() {
   const [form,      setForm]      = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [saving,    setSaving]    = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState(null)
+  const [uploading,    setUploading]    = useState(false)
+  const [uploadError,  setUploadError]  = useState(null)
+  const [showPicker,   setShowPicker]   = useState(false)
+  const [bucketFiles,  setBucketFiles]  = useState([])
+  const [pickerLoading, setPickerLoading] = useState(false)
   const supabase = createClient()
 
   const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp']
@@ -58,6 +61,23 @@ export default function AdminAppsPage() {
     const { data } = supabase.storage.from('app-logos').getPublicUrl(path)
     setForm(f => ({ ...f, logo_url: data.publicUrl }))
     setUploading(false)
+  }
+
+  async function openPicker() {
+    setShowPicker(true)
+    setPickerLoading(true)
+    const { data } = await supabase.storage.from('app-logos').list('', { sortBy: { column: 'created_at', order: 'desc' } })
+    const files = (data ?? []).filter(f => f.name !== '.emptyFolderPlaceholder').map(f => ({
+      name: f.name,
+      url:  supabase.storage.from('app-logos').getPublicUrl(f.name).data.publicUrl,
+    }))
+    setBucketFiles(files)
+    setPickerLoading(false)
+  }
+
+  function selectFromBucket(url) {
+    setForm(f => ({ ...f, logo_url: url }))
+    setShowPicker(false)
   }
 
   useEffect(() => {
@@ -99,6 +119,7 @@ export default function AdminAppsPage() {
     setEditingId(null)
     setForm(EMPTY_FORM)
     setUploadError(null)
+    setShowPicker(false)
   }
 
   async function saveApp() {
@@ -228,6 +249,17 @@ export default function AdminAppsPage() {
                       onChange={e => { if (e.target.files?.[0]) uploadLogo(e.target.files[0]) }}
                     />
                   </label>
+                  <button
+                    onClick={openPicker}
+                    disabled={uploading}
+                    style={{
+                      marginLeft: 8, padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--color-border)', background: 'var(--color-bg-card)',
+                      fontSize: 13, color: 'var(--color-text-secondary)', cursor: 'pointer',
+                    }}
+                  >
+                    Choose existing
+                  </button>
                   {form.logo_url && !uploading && (
                     <button
                       onClick={() => setForm(f => ({ ...f, logo_url: '' }))}
@@ -241,6 +273,49 @@ export default function AdminAppsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Bucket picker */}
+              {showPicker && (
+                <div style={{
+                  marginTop: 12, padding: 12,
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-bg-page)',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Existing logos
+                    </span>
+                    <button onClick={() => setShowPicker(false)} style={{ fontSize: 12, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      Close
+                    </button>
+                  </div>
+                  {pickerLoading ? (
+                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Loading…</p>
+                  ) : bucketFiles.length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>No logos uploaded yet.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {bucketFiles.map(f => (
+                        <button
+                          key={f.name}
+                          onClick={() => selectFromBucket(f.url)}
+                          title={f.name}
+                          style={{
+                            width: 56, height: 56, padding: 4,
+                            border: form.logo_url === f.url ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-md)',
+                            background: 'var(--color-bg-card)',
+                            cursor: 'pointer', overflow: 'hidden',
+                          }}
+                        >
+                          <img src={f.url} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid-2" style={{ marginBottom: 16 }}>
