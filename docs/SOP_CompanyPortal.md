@@ -2,7 +2,7 @@
 ## Standard Operating Procedure
 
 **Repo:** `interface-portal-app`
-**URL (prod):** TBD — update after Vercel deploy
+**URL (prod):** https://interface-portal-app.vercel.app
 **Last updated:** 2026-04-02
 
 ---

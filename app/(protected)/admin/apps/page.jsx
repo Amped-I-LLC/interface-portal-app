@@ -19,7 +19,7 @@ const STATUS_BADGE = {
 }
 
 const EMPTY_FORM = {
-  name: '', description: '', url: '', status: 'live',
+  name: '', description: '', url: '', logo_url: '', status: 'live',
   status_note: '', sort_order: 0,
 }
 
@@ -59,9 +59,10 @@ export default function AdminAppsPage() {
       name:        app.name,
       description: app.description ?? '',
       url:         app.url,
+      logo_url:    app.logo_url    ?? '',
       status:      app.status,
       status_note: app.status_note ?? '',
-      sort_order:  app.sort_order ?? 0,
+      sort_order:  app.sort_order  ?? 0,
     })
     setEditingId(app.id)
     setShowForm(true)
@@ -82,6 +83,7 @@ export default function AdminAppsPage() {
       name:        form.name.trim(),
       description: form.description.trim() || null,
       url:         form.url.trim(),
+      logo_url:    form.logo_url.trim()    || null,
       status:      form.status,
       status_note: form.status_note.trim() || null,
       sort_order:  Number(form.sort_order) || 0,
@@ -158,6 +160,29 @@ export default function AdminAppsPage() {
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 placeholder="Short description of what this app does"
               />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="input-label">
+                Logo URL <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional — paste public URL from Supabase Storage)</span>
+              </label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  className="input"
+                  value={form.logo_url}
+                  onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
+                  placeholder="https://..."
+                  style={{ flex: 1 }}
+                />
+                {form.logo_url && (
+                  <img
+                    src={form.logo_url}
+                    alt="preview"
+                    style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', objectFit: 'contain', border: '1px solid var(--color-border)', flexShrink: 0 }}
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
+                )}
+              </div>
             </div>
 
             <div className="grid-2" style={{ marginBottom: 16 }}>
