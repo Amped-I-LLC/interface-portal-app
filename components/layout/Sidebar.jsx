@@ -1,29 +1,37 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
-/* ============================================================
-   NAV CONFIG
-   To add a new page to the sidebar, add an entry here.
-   'href' must match the route in app/(protected)/
-   'section' groups items under a label (optional)
-   ============================================================ */
-const NAV_ITEMS = [
-  { section: 'MAIN', items: [
-    { label: 'Dashboard',   href: '/',          icon: '▦' },
-  ]},
-  { section: 'DATA', items: [
-    { label: 'Records',     href: '/records',   icon: '☰' },
-    { label: 'Reports',     href: '/reports',   icon: '↗' },
-  ]},
-  { section: 'SETTINGS', items: [
-    { label: 'Settings',    href: '/settings',  icon: '⚙' },
-  ]},
+const MAIN_NAV = [
+  { label: 'Employee Hub',  href: '/',              icon: '▦' },
+  { label: 'Announcements', href: '/announcements', icon: '◈' },
+]
+
+const ADMIN_NAV = [
+  { label: 'Apps',          href: '/admin/apps',          icon: '⊞' },
+  { label: 'Access',        href: '/admin/access',        icon: '⊡' },
+  { label: 'Announcements', href: '/admin/announcements', icon: '⊕' },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase
+        .from('portal_profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => setIsAdmin(data?.is_admin ?? false))
+    })
+  }, [])
 
   return (
     <aside style={{
@@ -48,66 +56,66 @@ export default function Sidebar() {
         <div style={{ fontWeight: 700, fontSize: 18, color: '#fff', letterSpacing: '-0.01em' }}>
           Amped I
         </div>
-        {/* Replace with the current interface name when stamping a new project */}
         <div style={{ fontSize: 11, color: 'var(--color-sidebar-label)', marginTop: 2 }}>
-          Interface Name v1.0
+          Company Portal v1.0
         </div>
       </div>
 
       {/* Nav Items */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        {NAV_ITEMS.map(({ section, items }) => (
-          <div key={section}>
-            <div className="section-label">{section}</div>
-            {items.map(({ label, href, icon }) => {
-              const isActive = pathname === href
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '9px 12px',
-                    margin: '1px 8px',
-                    borderRadius: 'var(--radius-md)',
-                    textDecoration: 'none',
-                    fontSize: 13,
-                    fontWeight: isActive ? 600 : 400,
-                    color: isActive
-                      ? 'var(--color-sidebar-active-text)'
-                      : 'var(--color-sidebar-text)',
-                    background: isActive
-                      ? 'var(--color-sidebar-active)'
-                      : 'transparent',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                  onMouseEnter={e => {
-                    if (!isActive) e.currentTarget.style.background = 'var(--color-sidebar-hover)'
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive) e.currentTarget.style.background = 'transparent'
-                  }}
-                >
-                  <span style={{ fontSize: 15, opacity: isActive ? 1 : 0.7 }}>{icon}</span>
-                  {label}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
+        <NavSection label="MAIN" items={MAIN_NAV} pathname={pathname} />
+        {isAdmin && <NavSection label="ADMIN" items={ADMIN_NAV} pathname={pathname} />}
       </nav>
 
-      {/* Bottom — version info */}
+      {/* Bottom */}
       <div style={{
         padding: '12px 16px',
         borderTop: '1px solid var(--color-sidebar-border)',
         fontSize: 11,
         color: 'var(--color-sidebar-label)',
       }}>
-        Amped I · Template v1.0
+        Amped I · Portal v1.0
       </div>
     </aside>
+  )
+}
+
+function NavSection({ label, items, pathname }) {
+  return (
+    <div>
+      <div className="section-label">{label}</div>
+      {items.map(({ label, href, icon }) => {
+        const isActive = pathname === href
+        return (
+          <Link
+            key={href}
+            href={href}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '9px 12px',
+              margin: '1px 8px',
+              borderRadius: 'var(--radius-md)',
+              textDecoration: 'none',
+              fontSize: 13,
+              fontWeight: isActive ? 600 : 400,
+              color: isActive ? 'var(--color-sidebar-active-text)' : 'var(--color-sidebar-text)',
+              background: isActive ? 'var(--color-sidebar-active)' : 'transparent',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              if (!isActive) e.currentTarget.style.background = 'var(--color-sidebar-hover)'
+            }}
+            onMouseLeave={e => {
+              if (!isActive) e.currentTarget.style.background = 'transparent'
+            }}
+          >
+            <span style={{ fontSize: 15, opacity: isActive ? 1 : 0.7 }}>{icon}</span>
+            {label}
+          </Link>
+        )
+      })}
+    </div>
   )
 }

@@ -1,0 +1,269 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { usePageTitle } from '@/lib/page-context'
+import { useAdminGuard } from '@/lib/use-admin-guard'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
+import EmptyState from '@/components/ui/EmptyState'
+
+const STATUS_OPTIONS = ['live', 'new', 'maintenance', 'coming_soon']
+
+const STATUS_BADGE = {
+  live:        { variant: 'success', label: 'Live' },
+  new:         { variant: 'info',    label: 'New' },
+  maintenance: { variant: 'warning', label: 'Maintenance' },
+  coming_soon: { variant: 'neutral', label: 'Coming Soon' },
+}
+
+const EMPTY_FORM = {
+  name: '', description: '', url: '', status: 'live',
+  status_note: '', sort_order: 0,
+}
+
+export default function AdminAppsPage() {
+  usePageTitle('Admin — Apps', 'Manage portal apps')
+  const { loading: guardLoading } = useAdminGuard()
+
+  const [apps,      setApps]      = useState([])
+  const [loading,   setLoading]   = useState(true)
+  const [showForm,  setShowForm]  = useState(false)
+  const [form,      setForm]      = useState(EMPTY_FORM)
+  const [editingId, setEditingId] = useState(null)
+  const [saving,    setSaving]    = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    if (!guardLoading) fetchApps()
+  }, [guardLoading])
+
+  async function fetchApps() {
+    const { data } = await supabase
+      .from('portal_apps')
+      .select('*')
+      .order('sort_order')
+    setApps(data ?? [])
+    setLoading(false)
+  }
+
+  function openAdd() {
+    setForm(EMPTY_FORM)
+    setEditingId(null)
+    setShowForm(true)
+  }
+
+  function openEdit(app) {
+    setForm({
+      name:        app.name,
+      description: app.description ?? '',
+      url:         app.url,
+      status:      app.status,
+      status_note: app.status_note ?? '',
+      sort_order:  app.sort_order ?? 0,
+    })
+    setEditingId(app.id)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelForm() {
+    setShowForm(false)
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+  }
+
+  async function saveApp() {
+    if (!form.name.trim() || !form.url.trim()) return
+    setSaving(true)
+
+    const payload = {
+      name:        form.name.trim(),
+      description: form.description.trim() || null,
+      url:         form.url.trim(),
+      status:      form.status,
+      status_note: form.status_note.trim() || null,
+      sort_order:  Number(form.sort_order) || 0,
+    }
+
+    if (editingId) {
+      await supabase.from('portal_apps').update(payload).eq('id', editingId)
+    } else {
+      await supabase.from('portal_apps').insert({ ...payload, is_active: true })
+    }
+
+    await fetchApps()
+    cancelForm()
+    setSaving(false)
+  }
+
+  async function toggleActive(app) {
+    await supabase
+      .from('portal_apps')
+      .update({ is_active: !app.is_active })
+      .eq('id', app.id)
+    setApps(prev => prev.map(a => a.id === app.id ? { ...a, is_active: !a.is_active } : a))
+  }
+
+  if (guardLoading) return null
+
+  return (
+    <div>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <h1>Apps</h1>
+          <p>Add, edit, or deactivate portal apps.</p>
+        </div>
+        {!showForm && (
+          <Button variant="primary" onClick={openAdd}>+ Add App</Button>
+        )}
+      </div>
+
+      <div className="page-content">
+
+        {/* Add / Edit Form */}
+        {showForm && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div className="card-header">
+              <h3>{editingId ? 'Edit App' : 'Add App'}</h3>
+            </div>
+
+            <div className="grid-2" style={{ marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="input-label">Name *</label>
+                <input
+                  className="input"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Sales Dashboard"
+                />
+              </div>
+              <div className="form-group">
+                <label className="input-label">URL *</label>
+                <input
+                  className="input"
+                  value={form.url}
+                  onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+                  placeholder="https://app.example.com"
+                />
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="input-label">Description</label>
+              <input
+                className="input"
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Short description of what this app does"
+              />
+            </div>
+
+            <div className="grid-2" style={{ marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="input-label">Status</label>
+                <select
+                  className="select"
+                  value={form.status}
+                  onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                >
+                  {STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>
+                      {s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="input-label">Sort Order</label>
+                <input
+                  className="input"
+                  type="number"
+                  value={form.sort_order}
+                  onChange={e => setForm(f => ({ ...f, sort_order: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {form.status === 'maintenance' && (
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label className="input-label">Maintenance Note</label>
+                <input
+                  className="input"
+                  value={form.status_note}
+                  onChange={e => setForm(f => ({ ...f, status_note: e.target.value }))}
+                  placeholder="e.g. Back online Friday"
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="primary" onClick={saveApp} disabled={saving}>
+                {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add App'}
+              </Button>
+              <Button variant="secondary" onClick={cancelForm} disabled={saving}>Cancel</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Apps Table */}
+        {loading ? (
+          <LoadingSkeleton lines={4} card />
+        ) : apps.length === 0 ? (
+          <EmptyState icon="⊞" title="No apps yet" message="Add your first app above." />
+        ) : (
+          <div className="card">
+            <div className="card-header"><h3>All Apps</h3></div>
+            <div className="table-wrapper">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    {['Name', 'Description', 'Status', 'Active', 'Actions'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {apps.map(app => {
+                    const badge = STATUS_BADGE[app.status] ?? STATUS_BADGE.live
+                    return (
+                      <tr key={app.id} style={{ borderBottom: '1px solid var(--color-border)', opacity: app.is_active ? 1 : 0.5 }}>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{app.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>{app.url}</div>
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--color-text-secondary)', maxWidth: 200 }}>
+                          {app.description || <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                          {app.status_note && (
+                            <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>{app.status_note}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <Badge variant={app.is_active ? 'success' : 'neutral'}>
+                            {app.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <Button size="sm" variant="secondary" onClick={() => openEdit(app)}>Edit</Button>
+                            <Button size="sm" variant={app.is_active ? 'danger' : 'secondary'} onClick={() => toggleActive(app)}>
+                              {app.is_active ? 'Deactivate' : 'Activate'}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

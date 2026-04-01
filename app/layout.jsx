@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Amped I — Interface',
-  description: 'Internal interface — Amped I',
+  title: 'Amped I — Company Portal',
+  description: 'Amped I Company Portal',
 }
 
 export default function RootLayout({ children }) {
