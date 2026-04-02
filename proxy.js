@@ -49,5 +49,7 @@ export async function middleware(request) {
   return response
 }
 
-// matcher is defined in middleware.js — do not add it here.
-// Static config cannot be read by Next.js when defined in an imported module.
+// Apply proxy to all routes except Next.js internals and static files
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
+}
