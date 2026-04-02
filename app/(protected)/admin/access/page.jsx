@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePageTitle } from '@/lib/page-context'
 import { useAdminGuard } from '@/lib/use-admin-guard'
@@ -11,6 +12,8 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
 export default function AdminAccessPage() {
   usePageTitle('Admin — Access', 'Manage user app access')
   const { loading: guardLoading } = useAdminGuard()
+  const searchParams = useSearchParams()
+  const preselectedUser = searchParams.get('user')
 
   const [tab,        setTab]        = useState('users')
   const [users,      setUsers]      = useState([])
@@ -32,10 +35,27 @@ export default function AdminAccessPage() {
       supabase.from('portal_apps').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('portal_user_app_access').select('*'),
     ])
-    setUsers(usersRes.data ?? [])
-    setApps(appsRes.data ?? [])
-    setAccess(accessRes.data ?? [])
+    const fetchedUsers  = usersRes.data  ?? []
+    const fetchedApps   = appsRes.data   ?? []
+    const fetchedAccess = accessRes.data ?? []
+    setUsers(fetchedUsers)
+    setApps(fetchedApps)
+    setAccess(fetchedAccess)
     setLoading(false)
+
+    // Auto-expand a user if redirected from the invite flow
+    if (preselectedUser) {
+      const user = fetchedUsers.find(u => u.id === preselectedUser)
+      if (user) {
+        setTab('users')
+        const currentAppIds = fetchedAccess.filter(a => a.user_id === user.id).map(a => a.app_id)
+        const state = {}
+        fetchedApps.forEach(app => { state[app.id] = currentAppIds.includes(app.id) })
+        state.__isAdmin = user.is_admin
+        setEditState(state)
+        setExpandedId(user.id)
+      }
+    }
   }
 
   // ── By User helpers ──────────────────────────────────────

@@ -5,11 +5,11 @@
      <Button variant="secondary" size="sm" onClick={fn}>Cancel</Button>
      <Button variant="danger" disabled>Delete</Button>
    Props:
-     variant  — 'primary' | 'secondary' | 'danger'  (default: 'primary')
-     size     — 'sm' | 'md' | 'lg'                  (default: 'md')
+     variant  — 'primary' | 'secondary' | 'neutral' | 'danger'  (default: 'primary')
+     size     — 'sm' | 'md' | 'lg'                              (default: 'md')
      disabled — boolean
      onClick  — function
-     type     — 'button' | 'submit' | 'reset'        (default: 'button')
+     type     — 'button' | 'submit' | 'reset'                   (default: 'button')
      children — content
    ============================================================ */
 export default function Button({

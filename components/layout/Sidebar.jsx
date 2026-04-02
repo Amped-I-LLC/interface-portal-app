@@ -11,6 +11,7 @@ const MAIN_NAV = [
 ]
 
 const ADMIN_NAV = [
+  { label: 'Users',         href: '/admin/users',         icon: '⊙' },
   { label: 'Apps',          href: '/admin/apps',          icon: '⊞' },
   { label: 'Access',        href: '/admin/access',        icon: '⊡' },
   { label: 'Announcements', href: '/admin/announcements', icon: '⊕' },
@@ -18,7 +19,8 @@ const ADMIN_NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdmin,  setIsAdmin]  = useState(false)
+  const [logoUrl,  setLogoUrl]  = useState(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -31,6 +33,10 @@ export default function Sidebar() {
         .single()
         .then(({ data }) => setIsAdmin(data?.is_admin ?? false))
     })
+
+    fetch('/api/logo-url')
+      .then(r => r.json())
+      .then(({ url }) => { if (url) setLogoUrl(url) })
   }, [])
 
   return (
@@ -53,11 +59,22 @@ export default function Sidebar() {
         padding: '20px 16px 16px',
         borderBottom: '1px solid var(--color-sidebar-border)',
       }}>
-        <div style={{ fontWeight: 700, fontSize: 18, color: '#fff', letterSpacing: '-0.01em' }}>
-          Amped I
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--color-sidebar-label)', marginTop: 2 }}>
-          Company Portal v1.0
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {logoUrl && (
+            <img
+              src={logoUrl}
+              alt="Company logo"
+              style={{ height: 32, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
+            />
+          )}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: '#fff', letterSpacing: '-0.01em' }}>
+              Amped I
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-sidebar-label)', marginTop: 1 }}>
+              Company Portal v1.0
+            </div>
+          </div>
         </div>
       </div>
 

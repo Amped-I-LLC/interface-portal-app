@@ -178,6 +178,12 @@ p  { line-height: 1.6; color: var(--color-text-secondary); }
 }
 .btn-secondary:hover { background: var(--color-bg-input); }
 
+.btn-neutral {
+  background: #64748b;
+  color: #fff;
+}
+.btn-neutral:hover { background: #4b5563; }
+
 .btn-danger {
   background: var(--color-danger);
   color: #fff;
