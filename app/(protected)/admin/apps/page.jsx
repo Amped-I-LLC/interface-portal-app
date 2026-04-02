@@ -20,7 +20,7 @@ const STATUS_BADGE = {
 
 const EMPTY_FORM = {
   name: '', description: '', url: '', logo_url: '', status: 'live',
-  status_note: '', sort_order: 0,
+  status_note: '', sort_order: 0, github_repo: '', sop_path: '',
 }
 
 export default function AdminAppsPage() {
@@ -105,6 +105,8 @@ export default function AdminAppsPage() {
       description: app.description ?? '',
       url:         app.url,
       logo_url:    app.logo_url    ?? '',
+      github_repo: app.github_repo ?? '',
+      sop_path:    app.sop_path    ?? '',
       status:      app.status,
       status_note: app.status_note ?? '',
       sort_order:  app.sort_order  ?? 0,
@@ -131,6 +133,8 @@ export default function AdminAppsPage() {
       description: form.description.trim() || null,
       url:         form.url.trim(),
       logo_url:    form.logo_url.trim()    || null,
+      github_repo: form.github_repo.trim() || null,
+      sop_path:    form.sop_path.trim()    || null,
       status:      form.status,
       status_note: form.status_note.trim() || null,
       sort_order:  Number(form.sort_order) || 0,
@@ -316,6 +320,31 @@ export default function AdminAppsPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            <div className="grid-2" style={{ marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="input-label">
+                  GitHub Repo <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional — for User Guide)</span>
+                </label>
+                <input
+                  className="input"
+                  value={form.github_repo}
+                  onChange={e => setForm(f => ({ ...f, github_repo: e.target.value }))}
+                  placeholder="Amped-I-LLC/interface-sales-dashboard"
+                />
+              </div>
+              <div className="form-group">
+                <label className="input-label">
+                  SOP File Path <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <input
+                  className="input"
+                  value={form.sop_path}
+                  onChange={e => setForm(f => ({ ...f, sop_path: e.target.value }))}
+                  placeholder="docs/SOP_User_AppName.md"
+                />
+              </div>
             </div>
 
             <div className="grid-2" style={{ marginBottom: 16 }}>

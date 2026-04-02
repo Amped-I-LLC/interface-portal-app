@@ -6,6 +6,7 @@ import { usePageTitle } from '@/lib/page-context'
 import Badge from '@/components/ui/Badge'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
 import EmptyState from '@/components/ui/EmptyState'
+import ReactMarkdown from 'react-markdown'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -42,6 +43,10 @@ export default function EmployeeHubPage() {
   const [apps,          setApps]          = useState([])
   const [announcements, setAnnouncements] = useState([])
   const [loading,       setLoading]       = useState(true)
+  const [sopApp,        setSopApp]        = useState(null)  // app whose SOP is open
+  const [sopContent,    setSopContent]    = useState('')
+  const [sopLoading,    setSopLoading]    = useState(false)
+  const [sopError,      setSopError]      = useState(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -82,8 +87,30 @@ export default function EmployeeHubPage() {
     load()
   }, [])
 
-  const firstName  = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || ''
-  const lastLogin  = formatLastLogin(user?.last_sign_in_at)
+  async function openSop(app) {
+    setSopApp(app)
+    setSopContent('')
+    setSopError(null)
+    setSopLoading(true)
+
+    const res = await fetch(`/api/sop?app_id=${app.id}`)
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Failed to load SOP.' }))
+      setSopError(error || 'Failed to load SOP.')
+    } else {
+      setSopContent(await res.text())
+    }
+    setSopLoading(false)
+  }
+
+  function closeSop() {
+    setSopApp(null)
+    setSopContent('')
+    setSopError(null)
+  }
+
+  const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || ''
+  const lastLogin = formatLastLogin(user?.last_sign_in_at)
 
   return (
     <div>
@@ -132,46 +159,127 @@ export default function EmployeeHubPage() {
             <div className="section-label" style={{ marginBottom: 12 }}>YOUR APPS</div>
             <div className="grid-4">
               {apps.map(app => (
-                <AppCard key={app.id} app={app} />
+                <AppCard key={app.id} app={app} onSop={() => openSop(app)} />
               ))}
             </div>
           </>
         )}
 
       </div>
+
+      {/* SOP Modal */}
+      {sopApp && (
+        <div
+          onClick={closeSop}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: '40px 20px',
+            overflowY: 'auto',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--color-bg-card)',
+              borderRadius: 'var(--radius-lg)',
+              width: '100%',
+              maxWidth: 760,
+              boxShadow: 'var(--shadow-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Modal header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 24px',
+              borderBottom: '1px solid var(--color-border)',
+            }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text-primary)' }}>
+                  {sopApp.name} — User Guide
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  {sopApp.github_repo}
+                </div>
+              </div>
+              <button
+                onClick={closeSop}
+                style={{
+                  fontSize: 20, lineHeight: 1, color: 'var(--color-text-muted)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div style={{ padding: '24px', overflowY: 'auto' }}>
+              {sopLoading ? (
+                <LoadingSkeleton lines={6} />
+              ) : sopError ? (
+                <p style={{ color: 'var(--color-danger)', fontSize: 13 }}>{sopError}</p>
+              ) : (
+                <div style={{
+                  fontSize: 13,
+                  lineHeight: 1.8,
+                  color: 'var(--color-text-secondary)',
+                }}>
+                  <ReactMarkdown
+                    components={{
+                      h1: ({node, ...p}) => <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 12, marginTop: 24 }} {...p} />,
+                      h2: ({node, ...p}) => <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 10, marginTop: 20 }} {...p} />,
+                      h3: ({node, ...p}) => <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 8, marginTop: 16 }} {...p} />,
+                      p:  ({node, ...p}) => <p  style={{ marginBottom: 12 }} {...p} />,
+                      ul: ({node, ...p}) => <ul style={{ paddingLeft: 20, marginBottom: 12 }} {...p} />,
+                      ol: ({node, ...p}) => <ol style={{ paddingLeft: 20, marginBottom: 12 }} {...p} />,
+                      li: ({node, ...p}) => <li style={{ marginBottom: 4 }} {...p} />,
+                      code: ({node, inline, ...p}) => inline
+                        ? <code style={{ background: 'var(--color-bg-page)', padding: '1px 5px', borderRadius: 3, fontSize: 12, fontFamily: 'monospace' }} {...p} />
+                        : <pre style={{ background: 'var(--color-bg-page)', padding: 12, borderRadius: 'var(--radius-md)', overflowX: 'auto', fontSize: 12, fontFamily: 'monospace' }}><code {...p} /></pre>,
+                      a: ({node, ...p}) => <a style={{ color: 'var(--color-primary)' }} target="_blank" rel="noopener noreferrer" {...p} />,
+                      hr: ({node, ...p}) => <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '20px 0' }} {...p} />,
+                      table: ({node, ...p}) => <div className="table-wrapper"><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }} {...p} /></div>,
+                      th: ({node, ...p}) => <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text-primary)' }} {...p} />,
+                      td: ({node, ...p}) => <td style={{ padding: '6px 10px', borderBottom: '1px solid var(--color-border)' }} {...p} />,
+                    }}
+                  >
+                    {sopContent}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function AppCard({ app }) {
+function AppCard({ app, onSop }) {
   const badge    = STATUS_BADGE[app.status] ?? STATUS_BADGE.live
   const initials = app.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const hasSop   = !!(app.github_repo && app.sop_path)
 
   return (
-    <a
-      href={app.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--color-bg-card)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '16px',
-        textDecoration: 'none',
-        position: 'relative',
-        transition: 'box-shadow 0.15s, border-color 0.15s',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.boxShadow   = 'var(--shadow-md)'
-        e.currentTarget.style.borderColor = 'var(--color-primary)'
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.boxShadow   = 'none'
-        e.currentTarget.style.borderColor = 'var(--color-border)'
-      }}
-    >
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--color-bg-card)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '16px',
+      position: 'relative',
+      transition: 'box-shadow 0.15s, border-color 0.15s',
+    }}>
       {/* Status badge */}
       <div style={{ position: 'absolute', top: 12, right: 12 }}>
         <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -187,16 +295,11 @@ function AppCard({ app }) {
           />
         ) : (
           <div style={{
-            width: 40,
-            height: 40,
+            width: 40, height: 40,
             borderRadius: 'var(--radius-md)',
             background: 'var(--color-primary-light)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 13,
-            fontWeight: 700,
-            color: 'var(--color-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, fontWeight: 700, color: 'var(--color-primary)',
           }}>
             {initials}
           </div>
@@ -215,18 +318,55 @@ function AppCard({ app }) {
         </div>
       )}
 
-      {/* Footer: URL or maintenance note */}
+      {/* Footer */}
       <div style={{
-        fontSize: 11,
-        color: 'var(--color-text-muted)',
         marginTop: 'auto',
         paddingTop: 10,
         borderTop: '1px solid var(--color-border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
       }}>
-        {app.status === 'maintenance' && app.status_note
-          ? app.status_note
-          : getHostname(app.url)}
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+          {app.status === 'maintenance' && app.status_note
+            ? app.status_note
+            : getHostname(app.url)}
+        </span>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {hasSop && (
+            <button
+              onClick={onSop}
+              style={{
+                fontSize: 11, padding: '3px 8px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border)',
+                background: 'transparent',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              User Guide
+            </button>
+          )}
+          <a
+            href={app.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontSize: 11, padding: '3px 8px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-primary)',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              textDecoration: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            Open
+          </a>
+        </div>
       </div>
-    </a>
+    </div>
   )
 }
