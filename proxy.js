@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 /* ============================================================
-   MIDDLEWARE — Route Protection
+   PROXY — Route Protection
    Runs on every request before the page renders.
    Redirects unauthenticated users to /login.
    Add any public routes to the PUBLIC_ROUTES array below.
@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server'
 
 const PUBLIC_ROUTES = ['/login']
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next({ request })
 
@@ -49,7 +49,7 @@ export async function middleware(request) {
   return response
 }
 
-// Apply middleware to all routes except Next.js internals and static files
+// Apply proxy to all routes except Next.js internals and static files
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
 }
