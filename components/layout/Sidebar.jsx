@@ -17,9 +17,14 @@ const ADMIN_NAV = [
   { label: 'Announcements', href: '/admin/announcements', icon: '⊕' },
 ]
 
+const DEV_NAV = [
+  { label: 'Dev Tools', href: '/admin/dev', icon: '⌥' },
+]
+
 export default function Sidebar() {
   const pathname = usePathname()
   const [isAdmin,  setIsAdmin]  = useState(false)
+  const [isDev,    setIsDev]    = useState(false)
   const [logoUrl,  setLogoUrl]  = useState(null)
   const supabase = createClient()
 
@@ -28,10 +33,13 @@ export default function Sidebar() {
       if (!user) return
       supabase
         .from('portal_profiles')
-        .select('is_admin')
+        .select('is_admin, is_dev')
         .eq('id', user.id)
         .single()
-        .then(({ data }) => setIsAdmin(data?.is_admin ?? false))
+        .then(({ data }) => {
+          setIsAdmin(data?.is_admin ?? false)
+          setIsDev(data?.is_dev ?? false)
+        })
     })
 
     fetch('/api/logo-url')
@@ -81,7 +89,8 @@ export default function Sidebar() {
       {/* Nav Items */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         <NavSection label="MAIN" items={MAIN_NAV} pathname={pathname} />
-        {isAdmin && <NavSection label="ADMIN" items={ADMIN_NAV} pathname={pathname} />}
+        {(isAdmin || isDev) && <NavSection label="ADMIN" items={ADMIN_NAV} pathname={pathname} />}
+        {isDev && <NavSection label="DEV" items={DEV_NAV} pathname={pathname} />}
       </nav>
 
       {/* Bottom */}

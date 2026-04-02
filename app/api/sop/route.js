@@ -5,7 +5,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
    Fetches the SOP_User_*.md file from the app's GitHub repo.
    - Validates user session
    - Validates user has access to the app (or is admin)
-   - Fetches PAT from portal_github_connections (server-side only)
+   - Fetches PAT from github_connections (server-side only)
    - Returns raw markdown content
    ============================================================ */
 export async function GET(request) {
@@ -40,14 +40,14 @@ export async function GET(request) {
     return Response.json({ error: 'No SOP configured for this app' }, { status: 404 })
   }
 
-  // Check user has access (admin or has access row)
+  // Check user has access (admin/dev or has access row)
   const { data: profile } = await supabase
     .from('portal_profiles')
-    .select('is_admin')
+    .select('is_admin, is_dev')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.is_admin) {
+  if (!profile?.is_admin && !profile?.is_dev) {
     const { data: access } = await supabase
       .from('portal_user_app_access')
       .select('id')
@@ -60,10 +60,10 @@ export async function GET(request) {
     }
   }
 
-  // Fetch PAT from portal_github_connections using service role
+  // Fetch PAT from github_connections using service role
   const supabaseAdmin = createServiceClient()
   const { data: conn } = await supabaseAdmin
-    .from('portal_github_connections')
+    .from('github_connections')
     .select('token')
     .limit(1)
     .single()

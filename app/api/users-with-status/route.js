@@ -16,11 +16,11 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('portal_profiles')
-    .select('is_admin')
+    .select('is_admin, is_dev')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.is_admin) {
+  if (!profile?.is_admin && !profile?.is_dev) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 

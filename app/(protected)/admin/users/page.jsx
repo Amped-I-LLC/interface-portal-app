@@ -186,6 +186,8 @@ export default function AdminUsersPage() {
               const initials      = (user.full_name || user.email || '?').slice(0, 2).toUpperCase()
               const isSelf        = user.id === selfId
               const isAdmin       = user.is_admin
+              const isDev         = user.is_dev
+              const isProtected   = isAdmin || isDev   // devs and admins are both protected from revoke/delete
               const isActing      = actionId === user.id
               const pendingAction = confirmAction?.id === user.id ? confirmAction.type : null
 
@@ -218,6 +220,7 @@ export default function AdminUsersPage() {
 
                     {/* Status badges */}
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {user.is_dev     && <Badge variant="neutral">Dev</Badge>}
                       {user.is_admin   && <Badge variant="info">Admin</Badge>}
                       {user.is_pending && <Badge variant="warning">Pending</Badge>}
                       {user.is_banned  && <Badge variant="danger">Revoked</Badge>}
@@ -237,7 +240,7 @@ export default function AdminUsersPage() {
                           </Button>
                         )}
 
-                        {!isAdmin && (
+                        {!isProtected && (
                           <>
                             {user.is_banned ? (
                               <Button
