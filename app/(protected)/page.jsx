@@ -7,6 +7,7 @@ import Badge from '@/components/ui/Badge'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -234,6 +235,7 @@ export default function EmployeeHubPage() {
                   color: 'var(--color-text-secondary)',
                 }}>
                   <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       h1: ({node, ...p}) => <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 12, marginTop: 24 }} {...p} />,
                       h2: ({node, ...p}) => <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 10, marginTop: 20 }} {...p} />,
