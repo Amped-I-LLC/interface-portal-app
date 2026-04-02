@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server'
 
 const PUBLIC_ROUTES = ['/login']
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next({ request })
 
