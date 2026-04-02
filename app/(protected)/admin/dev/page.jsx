@@ -9,7 +9,7 @@ import EmptyState from '@/components/ui/EmptyState'
 
 const TABS = ['Airtable Connections', 'GitHub Connections', 'Portal Profiles']
 
-const EMPTY_AT = { app_name: '', base_id: '', api_key: '', notes: '' }
+const EMPTY_AT = { app: '', name: '', token: '', base_id: '', notes: '' }
 const EMPTY_GH = { label: '', token: '', notes: '' }
 
 export default function DevToolsPage() {
@@ -88,7 +88,7 @@ export default function DevToolsPage() {
     })
     const json = await res.json()
     if (!res.ok) { setAtError(json.error); return }
-    setAtConns(prev => prev.map(c => c.id === id ? { ...c, ...atEditForm, api_key: atEditForm.api_key?.startsWith('••') ? c.api_key : `••••••••${atEditForm.api_key?.slice(-4)}` } : c))
+    setAtConns(prev => prev.map(c => c.id === id ? { ...c, ...atEditForm, token: atEditForm.token?.startsWith('••') ? c.token : `••••••••${atEditForm.token?.slice(-4)}` } : c))
     setAtEditId(null)
   }
 
@@ -241,8 +241,18 @@ export default function DevToolsPage() {
                 <form onSubmit={addAirtable} style={{ padding: 16, borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-page)' }}>
                   <div className="grid-2" style={{ marginBottom: 12 }}>
                     <div className="form-group">
-                      <label className="input-label">App Name <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input className="input" placeholder="interface-proposal-estimator" value={atForm.app_name} onChange={e => setAtForm(f => ({ ...f, app_name: e.target.value }))} required />
+                      <label className="input-label">App <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input className="input" placeholder="interface-proposal-estimator" value={atForm.app} onChange={e => setAtForm(f => ({ ...f, app: e.target.value }))} required />
+                    </div>
+                    <div className="form-group">
+                      <label className="input-label">Name</label>
+                      <input className="input" placeholder="Proposal Estimator" value={atForm.name} onChange={e => setAtForm(f => ({ ...f, name: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid-2" style={{ marginBottom: 12 }}>
+                    <div className="form-group">
+                      <label className="input-label">Token (PAT) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input className="input" placeholder="patXXXXXXXXXXXXXX.XXXX" value={atForm.token} onChange={e => setAtForm(f => ({ ...f, token: e.target.value }))} required />
                     </div>
                     <div className="form-group">
                       <label className="input-label">Base ID <span style={{ color: 'var(--color-danger)' }}>*</span></label>
@@ -250,12 +260,8 @@ export default function DevToolsPage() {
                     </div>
                   </div>
                   <div className="form-group" style={{ marginBottom: 12 }}>
-                    <label className="input-label">API Key <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                    <input className="input" placeholder="patXXXXXXXXXXXXXX.XXXX" value={atForm.api_key} onChange={e => setAtForm(f => ({ ...f, api_key: e.target.value }))} required />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 12 }}>
                     <label className="input-label">Notes</label>
-                    <input className="input" placeholder="Optional — e.g. Org PAT, read-only access" value={atForm.notes} onChange={e => setAtForm(f => ({ ...f, notes: e.target.value }))} />
+                    <input className="input" placeholder="Optional — e.g. read-only scope, expires 2027" value={atForm.notes} onChange={e => setAtForm(f => ({ ...f, notes: e.target.value }))} />
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Button type="submit" size="sm" variant="primary" disabled={atSaving}>{atSaving ? 'Saving…' : 'Save'}</Button>
@@ -276,17 +282,23 @@ export default function DevToolsPage() {
                       <div style={{ padding: 16, background: 'var(--color-bg-page)' }}>
                         <div className="grid-2" style={{ marginBottom: 12 }}>
                           <div className="form-group">
-                            <label className="input-label">App Name</label>
-                            <input className="input" value={atEditForm.app_name ?? conn.app_name} onChange={e => setAtEditForm(f => ({ ...f, app_name: e.target.value }))} />
+                            <label className="input-label">App</label>
+                            <input className="input" value={atEditForm.app ?? conn.app} onChange={e => setAtEditForm(f => ({ ...f, app: e.target.value }))} />
+                          </div>
+                          <div className="form-group">
+                            <label className="input-label">Name</label>
+                            <input className="input" value={atEditForm.name ?? conn.name ?? ''} onChange={e => setAtEditForm(f => ({ ...f, name: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="grid-2" style={{ marginBottom: 12 }}>
+                          <div className="form-group">
+                            <label className="input-label">Token (PAT) <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(leave masked to keep existing)</span></label>
+                            <input className="input" value={atEditForm.token ?? conn.token} onChange={e => setAtEditForm(f => ({ ...f, token: e.target.value }))} />
                           </div>
                           <div className="form-group">
                             <label className="input-label">Base ID</label>
                             <input className="input" value={atEditForm.base_id ?? conn.base_id} onChange={e => setAtEditForm(f => ({ ...f, base_id: e.target.value }))} />
                           </div>
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 12 }}>
-                          <label className="input-label">API Key <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(leave masked to keep existing)</span></label>
-                          <input className="input" value={atEditForm.api_key ?? conn.api_key} onChange={e => setAtEditForm(f => ({ ...f, api_key: e.target.value }))} />
                         </div>
                         <div className="form-group" style={{ marginBottom: 12 }}>
                           <label className="input-label">Notes</label>
@@ -300,9 +312,12 @@ export default function DevToolsPage() {
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px' }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)' }}>{conn.app_name}</div>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)' }}>
+                            {conn.name || conn.app}
+                            {conn.name && <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: 6 }}>({conn.app})</span>}
+                          </div>
                           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, fontFamily: 'monospace' }}>
-                            Base: {conn.base_id} &nbsp;·&nbsp; Key: {conn.api_key}
+                            Base: {conn.base_id} &nbsp;·&nbsp; Token: {conn.token}
                           </div>
                           {conn.notes && (
                             <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>{conn.notes}</div>
@@ -316,7 +331,7 @@ export default function DevToolsPage() {
                           </div>
                         ) : (
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <Button size="sm" variant="secondary" onClick={() => { setAtEditId(conn.id); setAtEditForm({ app_name: conn.app_name, base_id: conn.base_id, api_key: conn.api_key, notes: conn.notes ?? '' }); setAtError(null) }}>Edit</Button>
+                            <Button size="sm" variant="secondary" onClick={() => { setAtEditId(conn.id); setAtEditForm({ app: conn.app, name: conn.name ?? '', token: conn.token, base_id: conn.base_id, notes: conn.notes ?? '' }); setAtError(null) }}>Edit</Button>
                             <Button size="sm" variant="danger" onClick={() => setAtConfirmId(conn.id)}>Delete</Button>
                           </div>
                         )}
