@@ -21,24 +21,36 @@ const STATUS_BADGE = {
 const EMPTY_FORM = {
   name: '', description: '', url: '', logo_url: '', status: 'live',
   status_note: '', sort_order: 0, github_repo: '', sop_path: '',
+  department_ids: [], // array of portal_departments UUIDs
 }
 
 export default function AdminAppsPage() {
   usePageTitle('Admin — Apps', 'Manage portal apps')
   const { loading: guardLoading } = useAdminGuard()
 
-  const [apps,      setApps]      = useState([])
-  const [loading,   setLoading]   = useState(true)
+  const [apps,        setApps]        = useState([])
+  const [departments, setDepartments] = useState([])
+  const [loading,     setLoading]     = useState(true)
   const [showForm,  setShowForm]  = useState(false)
   const [form,      setForm]      = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [saving,    setSaving]    = useState(false)
-  const [uploading,    setUploading]    = useState(false)
-  const [uploadError,  setUploadError]  = useState(null)
-  const [showPicker,   setShowPicker]   = useState(false)
-  const [bucketFiles,  setBucketFiles]  = useState([])
+  const [uploading,     setUploading]     = useState(false)
+  const [uploadError,   setUploadError]   = useState(null)
+  const [showPicker,    setShowPicker]    = useState(false)
+  const [bucketFiles,   setBucketFiles]   = useState([])
   const [pickerLoading, setPickerLoading] = useState(false)
+  const [previewUrl,    setPreviewUrl]    = useState(null)
   const supabase = createClient()
+
+  // Resolve a signed preview URL whenever form.logo_url (a file path) changes
+  useEffect(() => {
+    if (!form.logo_url) { setPreviewUrl(null); return }
+    fetch(`/api/app-logo-url?path=${encodeURIComponent(form.logo_url)}`)
+      .then(r => r.json())
+      .then(({ url }) => setPreviewUrl(url ?? null))
+      .catch(() => setPreviewUrl(null))
+  }, [form.logo_url])
 
   const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp']
   const MAX_MB = 2
@@ -58,25 +70,23 @@ export default function AdminAppsPage() {
     const path = `${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('app-logos').upload(path, file, { upsert: true })
     if (error) { setUploadError('Upload failed: ' + error.message); setUploading(false); return }
-    const { data } = supabase.storage.from('app-logos').getPublicUrl(path)
-    setForm(f => ({ ...f, logo_url: data.publicUrl }))
+    // Store only the file path — signed URL is resolved via /api/app-logo-url
+    setForm(f => ({ ...f, logo_url: path }))
     setUploading(false)
   }
 
   async function openPicker() {
     setShowPicker(true)
     setPickerLoading(true)
-    const { data } = await supabase.storage.from('app-logos').list('', { sortBy: { column: 'created_at', order: 'desc' } })
-    const files = (data ?? []).filter(f => f.name !== '.emptyFolderPlaceholder').map(f => ({
-      name: f.name,
-      url:  supabase.storage.from('app-logos').getPublicUrl(f.name).data.publicUrl,
-    }))
-    setBucketFiles(files)
+    const res = await fetch('/api/app-logo-list')
+    const { files } = await res.json()
+    setBucketFiles(files ?? [])
     setPickerLoading(false)
   }
 
-  function selectFromBucket(url) {
-    setForm(f => ({ ...f, logo_url: url }))
+  function selectFromBucket(file) {
+    // Store the file path (name), not the signed URL
+    setForm(f => ({ ...f, logo_url: file.name }))
     setShowPicker(false)
   }
 
@@ -85,11 +95,12 @@ export default function AdminAppsPage() {
   }, [guardLoading])
 
   async function fetchApps() {
-    const { data } = await supabase
-      .from('portal_apps')
-      .select('*')
-      .order('sort_order')
-    setApps(data ?? [])
+    const [appsRes, deptRes] = await Promise.all([
+      supabase.from('portal_apps').select('*').order('sort_order'),
+      supabase.from('portal_departments').select('*').order('sort_order'),
+    ])
+    setApps(appsRes.data ?? [])
+    setDepartments(deptRes.data ?? [])
     setLoading(false)
   }
 
@@ -99,17 +110,23 @@ export default function AdminAppsPage() {
     setShowForm(true)
   }
 
-  function openEdit(app) {
+  async function openEdit(app) {
+    const { data: deptLinks } = await supabase
+      .from('portal_app_departments')
+      .select('department_id')
+      .eq('app_id', app.id)
+
     setForm({
-      name:        app.name,
-      description: app.description ?? '',
-      url:         app.url,
-      logo_url:    app.logo_url    ?? '',
-      github_repo: app.github_repo ?? '',
-      sop_path:    app.sop_path    ?? '',
-      status:      app.status,
-      status_note: app.status_note ?? '',
-      sort_order:  app.sort_order  ?? 0,
+      name:           app.name,
+      description:    app.description ?? '',
+      url:            app.url,
+      logo_url:       app.logo_url    ?? '',
+      github_repo:    app.github_repo ?? '',
+      sop_path:       app.sop_path    ?? '',
+      status:         app.status,
+      status_note:    app.status_note ?? '',
+      sort_order:     app.sort_order  ?? 0,
+      department_ids: (deptLinks ?? []).map(d => d.department_id),
     })
     setEditingId(app.id)
     setShowForm(true)
@@ -140,10 +157,40 @@ export default function AdminAppsPage() {
       sort_order:  Number(form.sort_order) || 0,
     }
 
+    let appId = editingId
     if (editingId) {
       await supabase.from('portal_apps').update(payload).eq('id', editingId)
     } else {
-      await supabase.from('portal_apps').insert({ ...payload, is_active: true })
+      const { data: newApp } = await supabase
+        .from('portal_apps')
+        .insert({ ...payload, is_active: true })
+        .select('id')
+        .single()
+      appId = newApp.id
+    }
+
+    // Sync department assignments via junction table
+    const { error: delError } = await supabase
+      .from('portal_app_departments')
+      .delete()
+      .eq('app_id', appId)
+
+    if (delError) {
+      console.error('Failed to clear department assignments:', delError.message)
+      setSaving(false)
+      return
+    }
+
+    if (form.department_ids.length > 0) {
+      const { error: insError } = await supabase
+        .from('portal_app_departments')
+        .insert(form.department_ids.map(did => ({ app_id: appId, department_id: did })))
+
+      if (insError) {
+        console.error('Failed to save department assignments:', insError.message)
+        setSaving(false)
+        return
+      }
     }
 
     await fetchApps()
@@ -219,9 +266,9 @@ export default function AdminAppsPage() {
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {/* Preview */}
-                {form.logo_url ? (
+                {previewUrl ? (
                   <img
-                    src={form.logo_url}
+                    src={previewUrl}
                     alt="logo preview"
                     style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', objectFit: 'contain', border: '1px solid var(--color-border)', flexShrink: 0 }}
                     onError={e => { e.currentTarget.style.display = 'none' }}
@@ -303,11 +350,11 @@ export default function AdminAppsPage() {
                       {bucketFiles.map(f => (
                         <button
                           key={f.name}
-                          onClick={() => selectFromBucket(f.url)}
+                          onClick={() => selectFromBucket(f)}
                           title={f.name}
                           style={{
                             width: 56, height: 56, padding: 4,
-                            border: form.logo_url === f.url ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                            border: form.logo_url === f.name ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
                             borderRadius: 'var(--radius-md)',
                             background: 'var(--color-bg-card)',
                             cursor: 'pointer', overflow: 'hidden',
@@ -344,6 +391,30 @@ export default function AdminAppsPage() {
                   onChange={e => setForm(f => ({ ...f, sop_path: e.target.value }))}
                   placeholder="docs/SOP_User_AppName.md"
                 />
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="input-label">Departments <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(select all that apply)</span></label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
+                {departments.map(d => {
+                  const checked = form.department_ids.includes(d.id)
+                  return (
+                    <label key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => setForm(f => ({
+                          ...f,
+                          department_ids: checked
+                            ? f.department_ids.filter(id => id !== d.id)
+                            : [...f.department_ids, d.id],
+                        }))}
+                      />
+                      {d.name} <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>({d.acronym})</span>
+                    </label>
+                  )
+                })}
               </div>
             </div>
 

@@ -185,6 +185,7 @@ export default function AdminUsersPage() {
             {users.map(user => {
               const initials      = (user.full_name || user.email || '?').slice(0, 2).toUpperCase()
               const isSelf        = user.id === selfId
+              const isAdmin       = user.is_admin
               const isActing      = actionId === user.id
               const pendingAction = confirmAction?.id === user.id ? confirmAction.type : null
 
@@ -236,44 +237,48 @@ export default function AdminUsersPage() {
                           </Button>
                         )}
 
-                        {user.is_banned ? (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => restoreUser(user.id)}
-                            disabled={isActing}
-                          >
-                            {isActing ? 'Restoring…' : 'Restore'}
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="neutral"
-                            onClick={() => setConfirmAction(
-                              pendingAction === 'revoke' ? null : { id: user.id, type: 'revoke' }
+                        {!isAdmin && (
+                          <>
+                            {user.is_banned ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => restoreUser(user.id)}
+                                disabled={isActing}
+                              >
+                                {isActing ? 'Restoring…' : 'Restore'}
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="neutral"
+                                onClick={() => setConfirmAction(
+                                  pendingAction === 'revoke' ? null : { id: user.id, type: 'revoke' }
+                                )}
+                                disabled={isActing}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                </svg>
+                                Revoke
+                              </Button>
                             )}
-                            disabled={isActing}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-                            </svg>
-                            Revoke
-                          </Button>
-                        )}
 
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => setConfirmAction(
-                            pendingAction === 'delete' ? null : { id: user.id, type: 'delete' }
-                          )}
-                          disabled={isActing}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                          </svg>
-                          Delete
-                        </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={() => setConfirmAction(
+                                pendingAction === 'delete' ? null : { id: user.id, type: 'delete' }
+                              )}
+                              disabled={isActing}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                              </svg>
+                              Delete
+                            </Button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

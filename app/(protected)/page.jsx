@@ -44,6 +44,9 @@ export default function EmployeeHubPage() {
   const [apps,          setApps]          = useState([])
   const [announcements, setAnnouncements] = useState([])
   const [loading,       setLoading]       = useState(true)
+  const [departments,   setDepartments]   = useState([])
+  const [deptFilter,    setDeptFilter]    = useState('ALL')
+  const [logoUrlMap,    setLogoUrlMap]    = useState({})
   const [sopApp,        setSopApp]        = useState(null)  // app whose SOP is open
   const [sopContent,    setSopContent]    = useState('')
   const [sopLoading,    setSopLoading]    = useState(false)
@@ -56,14 +59,24 @@ export default function EmployeeHubPage() {
       if (!user) return
       setUser(user)
 
-      const [profileRes, annRes] = await Promise.all([
+      const [profileRes, annRes, deptRes, appDeptRes] = await Promise.all([
         supabase.from('portal_profiles').select('*').eq('id', user.id).single(),
         supabase.from('portal_announcements').select('*').order('created_at', { ascending: false }),
+        supabase.from('portal_departments').select('*').order('sort_order'),
+        supabase.from('portal_app_departments').select('app_id, portal_departments(acronym, name)'),
       ])
 
       const profile = profileRes.data
       setProfile(profile)
       setAnnouncements(annRes.data ?? [])
+      setDepartments(deptRes.data ?? [])
+
+      // Build a map of app_id → [{ acronym, name }]
+      const appDeptMap = {}
+      ;(appDeptRes.data ?? []).forEach(row => {
+        if (!appDeptMap[row.app_id]) appDeptMap[row.app_id] = []
+        if (row.portal_departments) appDeptMap[row.app_id].push(row.portal_departments)
+      })
 
       let appsData = []
       if (profile?.is_admin) {
@@ -82,8 +95,25 @@ export default function EmployeeHubPage() {
         appsData.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
       }
 
+      appsData = appsData.map(app => ({ ...app, departments: appDeptMap[app.id] ?? [] }))
       setApps(appsData)
       setLoading(false)
+
+      // Resolve signed URLs for all unique logo paths in one batch
+      const uniquePaths = [...new Set(
+        appsData.map(app => extractLogoPath(app.logo_url)).filter(Boolean)
+      )]
+      if (uniquePaths.length > 0) {
+        const entries = await Promise.all(
+          uniquePaths.map(path =>
+            fetch(`/api/app-logo-url?path=${encodeURIComponent(path)}`)
+              .then(r => r.json())
+              .then(({ url }) => [path, url])
+              .catch(() => [path, null])
+          )
+        )
+        setLogoUrlMap(Object.fromEntries(entries.filter(([, url]) => url)))
+      }
     }
     load()
   }, [])
@@ -155,16 +185,57 @@ export default function EmployeeHubPage() {
             title="No apps assigned"
             message="You don't have access to any apps yet. Contact your administrator."
           />
-        ) : (
-          <>
-            <div className="section-label" style={{ marginBottom: 12 }}>YOUR APPS</div>
-            <div className="grid-4">
-              {apps.map(app => (
-                <AppCard key={app.id} app={app} onSop={() => openSop(app)} />
-              ))}
-            </div>
-          </>
-        )}
+        ) : (() => {
+          const activeDepts = departments.filter(d => apps.some(a => a.departments?.some(ad => ad.acronym === d.acronym)))
+          const filtered    = deptFilter === 'ALL' ? apps : apps.filter(a => a.departments?.some(d => d.acronym === deptFilter))
+          return (
+            <>
+              {/* Department filter bar */}
+              {activeDepts.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[{ acronym: 'ALL', name: 'All' }, ...activeDepts].map(d => {
+                    const isActive = deptFilter === d.acronym
+                    return (
+                      <button
+                        key={d.acronym}
+                        onClick={() => setDeptFilter(d.acronym)}
+                        style={{
+                          padding: '5px 12px',
+                          fontSize: 12,
+                          fontWeight: isActive ? 600 : 400,
+                          borderRadius: 'var(--radius-full)',
+                          border: isActive ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+                          background: isActive ? 'var(--color-primary-light)' : 'transparent',
+                          color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                        >
+                        {d.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              <div className="section-label" style={{ marginBottom: 12 }}>YOUR APPS</div>
+              {filtered.length === 0 ? (
+                <EmptyState icon="▦" title="No apps in this department" message="Try selecting a different filter." />
+              ) : (
+                <div className="grid-4">
+                  {filtered.map(app => (
+                    <AppCard
+                      key={app.id}
+                      app={app}
+                      logoSrc={logoUrlMap[extractLogoPath(app.logo_url)] ?? null}
+                      onSop={() => openSop(app)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )
+        })()}
 
       </div>
 
@@ -240,7 +311,12 @@ export default function EmployeeHubPage() {
                       h1: ({node, ...p}) => <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 12, marginTop: 24 }} {...p} />,
                       h2: ({node, ...p}) => <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 10, marginTop: 20 }} {...p} />,
                       h3: ({node, ...p}) => <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 8, marginTop: 16 }} {...p} />,
-                      p:  ({node, ...p}) => <p  style={{ marginBottom: 12 }} {...p} />,
+                      p:  ({node, children, ...p}) => {
+                        const hasBlock = node?.children?.some(c => c.type === 'element' && ['pre','ul','ol','table','blockquote'].includes(c.tagName))
+                        return hasBlock
+                          ? <div style={{ marginBottom: 12 }} {...p}>{children}</div>
+                          : <p style={{ marginBottom: 12 }} {...p}>{children}</p>
+                      },
                       ul: ({node, ...p}) => <ul style={{ paddingLeft: 20, marginBottom: 12 }} {...p} />,
                       ol: ({node, ...p}) => <ol style={{ paddingLeft: 20, marginBottom: 12 }} {...p} />,
                       li: ({node, ...p}) => <li style={{ marginBottom: 4 }} {...p} />,
@@ -266,7 +342,16 @@ export default function EmployeeHubPage() {
   )
 }
 
-function AppCard({ app, onSop }) {
+// Extracts the storage file path from either a plain path or a legacy full public URL
+function extractLogoPath(logoUrl) {
+  if (!logoUrl) return null
+  if (!logoUrl.startsWith('http')) return logoUrl
+  const marker = '/app-logos/'
+  const idx = logoUrl.indexOf(marker)
+  return idx >= 0 ? logoUrl.slice(idx + marker.length) : null
+}
+
+function AppCard({ app, logoSrc, onSop }) {
   const badge    = STATUS_BADGE[app.status] ?? STATUS_BADGE.live
   const initials = app.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const hasSop   = !!(app.github_repo && app.sop_path)
@@ -289,9 +374,9 @@ function AppCard({ app, onSop }) {
 
       {/* Logo */}
       <div style={{ marginBottom: 12 }}>
-        {app.logo_url ? (
+        {logoSrc ? (
           <img
-            src={app.logo_url}
+            src={logoSrc}
             alt={app.name}
             style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', objectFit: 'contain' }}
           />
@@ -309,9 +394,27 @@ function AppCard({ app, onSop }) {
       </div>
 
       {/* Name */}
-      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)', marginBottom: 6, paddingRight: 48 }}>
+      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)', marginBottom: 4, paddingRight: 48 }}>
         {app.name}
       </div>
+
+      {/* Department tags */}
+      {app.departments?.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+          {app.departments.map(d => (
+            <span key={d.acronym} style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+              color: 'var(--color-text-muted)', textTransform: 'uppercase',
+              background: 'var(--color-bg-page)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '1px 5px',
+            }}>
+              {d.acronym}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Description */}
       {app.description && (
