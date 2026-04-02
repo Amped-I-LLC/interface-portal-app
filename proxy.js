@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server'
 
 const PUBLIC_ROUTES = ['/login']
 
-export async function proxy(request) {
+export async function middleware(request) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next({ request })
 
@@ -49,7 +49,5 @@ export async function proxy(request) {
   return response
 }
 
-// Apply proxy to all routes except Next.js internals and static files
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
-}
+// matcher is defined in middleware.js — do not add it here.
+// Static config cannot be read by Next.js when defined in an imported module.
