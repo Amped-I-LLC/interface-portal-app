@@ -18,7 +18,7 @@ export async function GET() {
   const admin = createServiceClient()
 
   const { data: files, error: listError } = await admin.storage
-    .from('app-logo')
+    .from('company-logo')
     .list('', { limit: 1 })
 
   if (listError || !files?.length) {
@@ -27,7 +27,7 @@ export async function GET() {
 
   const filename = files[0].name
   const { data, error } = await admin.storage
-    .from('app-logo')
+    .from('company-logo')
     .createSignedUrl(filename, 60 * 60 * 2) // 2-hour signed URL
 
   if (error || !data?.signedUrl) {
