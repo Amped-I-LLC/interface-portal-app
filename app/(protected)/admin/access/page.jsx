@@ -1,8 +1,6 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePageTitle } from '@/lib/page-context'
@@ -12,6 +10,14 @@ import Button from '@/components/ui/Button'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
 
 export default function AdminAccessPage() {
+  return (
+    <Suspense>
+      <AdminAccessPageContent />
+    </Suspense>
+  )
+}
+
+function AdminAccessPageContent() {
   usePageTitle('Admin — Access', 'Manage user app access')
   const { loading: guardLoading } = useAdminGuard()
   const searchParams = useSearchParams()
