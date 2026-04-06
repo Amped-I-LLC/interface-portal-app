@@ -35,7 +35,7 @@ export async function POST(request) {
   // Send invite using service role
   const admin = createServiceClient()
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=set-password`,
   })
 
   if (error) {
